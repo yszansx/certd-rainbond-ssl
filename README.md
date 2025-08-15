@@ -11,5 +11,6 @@
 
 <img width="723" height="578" alt="image" src="https://github.com/user-attachments/assets/f7472c36-536f-4386-a398-2563e46b2b00" />
 
+配置完成后如下。然后触发流水线证书部署，就能实现rainbond上面绑定域名的自动化更新。
 <img width="715" height="587" alt="image" src="https://github.com/user-attachments/assets/8288c111-7c3d-44ed-9869-fabb23f772f3" />
 
