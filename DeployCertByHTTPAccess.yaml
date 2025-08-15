@@ -1,0 +1,39 @@
+name: DeployCertByHTTPAccess
+icon: arcticons:access
+title: 通过HTTP服务部署rainbond证书授权
+group: null
+desc: null
+setting: null
+sysSetting: null
+type: custom
+disabled: false
+version: null
+pluginType: access
+author: guoch
+input:
+  baseURL:
+    title: API基础地址
+    helper: API的基础路径，例如：http://127.0.0.1:7070/openapi/v1/teams
+    component:
+      placeholder: http://127.0.0.1:7070/openapi/v1/teams
+    required: true
+  token:
+    title: 鉴权信息
+    helper: Authorization请求头的值
+    required: true
+    encrypt: true
+    component:
+      name: a-input
+      allowClear: true
+showRunStrategy: false
+default:
+  strategy:
+    runStrategy: 1
+content: |
+
+  const { BaseAccess } = await import("@certd/pipeline")
+  // 需要返回一个继承BaseAccess的类
+  return class DeployCertByHTTPAccess extends BaseAccess {
+    baseURL;
+    token;
+  }
