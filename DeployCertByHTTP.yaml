@@ -1,0 +1,135 @@
+name: DeployCertByHTTP
+icon: carbon:http
+title: 通过HTTP服务部署rainbond证书
+group: other
+desc: null
+setting: null
+sysSetting: null
+type: custom
+disabled: false
+version: null
+pluginType: deploy
+author: guoch
+input:
+  accessId:
+    title: Access授权
+    helper: xxxx的授权
+    component:
+      name: access-selector
+      type: guoch/DeployCertByHTTPAccess
+    required: true
+  teamId:
+    title: Team ID
+    helper: URL中的团队标识 (例如 7bd0xhns)
+    required: true
+    component:
+      name: a-input
+  certificateId:
+    title: 证书ID
+    helper: URL中的证书ID (例如 9)
+    required: true
+    component:
+      name: a-input
+  cert:
+    title: 前置任务证书
+    helper: 请选择前置任务产生的证书
+    component:
+      name: output-selector
+      vModel: modelValue
+      from:
+        - ':cert:'
+    required: true
+  certDomains:
+    title: 当前证书域名
+    component:
+      name: cert-domains-getter
+    mergeScript: |
+      return {
+        component:{
+            inputKey: ctx.compute(({form})=>{
+              return form.cert
+            }),
+        }
+      }
+    required: true
+showRunStrategy: false
+default:
+  strategy:
+    runStrategy: 1
+dependPlugins:
+  - guoch/DeployCertByHTTPAccess
+content: |
+
+  const { AbstractTaskPlugin } = await import("@certd/pipeline")
+  return class DemoTask extends AbstractTaskPlugin {
+    accessId;
+    teamId;
+    certificateId;
+    cert;
+    certDomains;
+
+    async onInstance() {
+      this.access = await this.getAccess(this.accessId);
+      // console.log('this.access', this.access)
+    }
+
+    async execute() {
+      this.logger.info("准备通过Webhook部署证书, 域名:", this.certDomains);
+      
+      // 动态构建完整的Webhook URL
+      const fullUrl = `${this.access.baseURL}/${this.teamId}/certificates/${this.certificateId}`;
+
+      // 从cert对象中获取证书、私钥和域名
+      const domains = this.certDomains.join(',');
+      const certificate = this.cert.crt;
+      const privateKey = this.cert.key;
+
+      // 构造请求体，参考图片中的JSON结构
+      const requestBody = {
+        alias: domains,
+        certificate: certificate,
+        private_key: privateKey,
+        certificate_type: "服务端证书",
+        id: "1" // 这个id可能也需要参数化，如果它与URL中的证书ID不同的话
+      };
+
+      this.logger.info("发送到Webhook URL:", fullUrl);
+      
+      // 发送PUT请求
+      const ret = await this.doRequest({
+        url: fullUrl, // 使用动态构建的完整URL
+        method: "put",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        data: requestBody
+      })
+      this.logger.info("Webhook响应:", ret);
+    }
+
+
+    async doRequest(data) {
+      data.headers = {
+        ...(data.headers || {}),
+        Authorization: this.access.token, 
+      }
+      return await this.doRequestWithoutAuth(data)
+    }
+
+    async doRequestWithoutAuth(data) {
+      const ret = await this.http.request(data)
+        .catch(err => {
+          const { status, statusText, code, response } = err || {}
+          const { data } = response || {}
+          if (!!data) {
+            return data;
+          }
+          return { error: statusText || code || status }
+        });
+      if ('ok' === ret?.result) return ret;
+      if (ret && !ret.error) {
+          return ret;
+      }
+      throw new Error(JSON.stringify(ret?.error || ret || '未知错误'));
+    }
+  }
